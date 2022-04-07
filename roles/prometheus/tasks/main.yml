@@ -1,0 +1,100 @@
+---
+- name: Download .tar.gz Prometheus file
+  delegate_to: 127.0.0.1
+  run_once: True
+  get_url:
+    url: "https://github.com/prometheus/prometheus/releases/download/v2.34.0/prometheus-{{ prometheus_server_version }}.linux-amd64.tar.gz"
+    dest: "./roles/prometheus/files/prometheus-{{ prometheus_server_version }}.linux-amd64.tar.gz"
+    mode: 0755
+    timeout: 60
+    force: true
+    validate_certs: false
+- name: Add {{prometheus_server_user}} user
+  become: true
+  become_method: sudo
+  become_user: root
+  user:
+    name: "{{prometheus_server_user}}"
+    groups: "{{ prometheus_server_user }}"
+    shell: /usr/sbin/nologin
+    system: true
+    create_home: false
+- name: Upload .tar.gz Prometheus file to instance
+  copy:
+    src: "./roles/prometheus/files/prometheus-{{ prometheus_server_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/prometheus-{{ prometheus_server_version }}.linux-amd64.tar.gz"
+  register: download_prometheus_binaries
+  until: download_prometheus_binaries is succeeded
+- name: Create Prometheus directtory
+  become: true
+  become_method: sudo
+  become_user: root
+  file:
+    state: directory
+    path: "{{ prometheus_server_dir }}"
+    mode: 0770
+    owner: "{{ prometheus_server_user }}"
+    group: "{{ prometheus_server_user }}"
+
+- name: Create data Prometheus directtory
+  become: true
+  become_method: sudo
+  become_user: root
+  file:
+    state: directory
+    path: "{{ prometheus_server_dir }}/data"
+    mode: 0770
+    owner: "{{ prometheus_server_user }}"
+    group: "{{ prometheus_server_user }}"
+
+- name: Create console_libraries Prometheus directtory
+  become: true
+  become_method: sudo
+  become_user: root
+  file:
+    state: directory
+    path: "{{ prometheus_server_dir }}/console_libraries"
+    mode: 0770
+    owner: "{{ prometheus_server_user }}"
+    group: "{{ prometheus_server_user }}"
+
+- name: Create consoles Prometheus directtory
+  become: true
+  become_method: sudo
+  become_user: root
+  file:
+    state: directory
+    path: "{{ prometheus_server_dir }}/consoles"
+    mode: 0770
+    owner: "{{ prometheus_server_user }}"
+    group: "{{ prometheus_server_user }}"
+
+- name: Extract Prometheus in the installation directory
+  become: true
+  become_user: root
+  become_method: sudo
+  unarchive:
+    copy: false
+    src: "/tmp/prometheus-{{prometheus_server_version}}.linux-amd64.tar.gz"
+    dest: "{{ prometheus_server_dir }}"
+    extra_opts: [--strip-components=1]
+    creates: "{{ prometheus_server_dir }}/prometheus"
+- name: Configure Prometheus
+  become: true
+  become_user: root
+  become_method: sudo
+  template:
+    src: prometheus.yml.j2
+    mode: 0644
+    owner: "{{prometheus_server_user}}"
+    dest: "{{ prometheus_server_dir }}/prometheus.yml"
+- name: Create init file
+  become: true
+  become_user: root
+  become_method: sudo
+  template:
+    src: prometheus-server.service.j2
+    mode: 0755
+    owner: root
+    dest: /etc/systemd/system/prometheus-server.service
+  notify: restart Prometheus-server

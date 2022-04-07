@@ -1,0 +1,12 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  query_log_file: {{prometheus_server_dir}}/query.log
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: node_exporter
+    static_configs:
+      - targets: ["{{ hostvars['node-exporter-debian01']['ansible_host'] }}:9100"]

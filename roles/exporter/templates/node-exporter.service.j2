@@ -1,0 +1,9 @@
+[Unit]
+    Description=Node-exporter {{ node_exporter_version }}
+    After=network-online.target
+[Service]
+    User={{ node_exporter_user }}
+    Type=simple
+    ExecStart={{ node_exporter_dir }}/node_exporter
+[Install]
+    WantedBy=multi-user.target
